@@ -1310,3 +1310,126 @@ CREATE VIEW pg_stat_subscription_stats AS
         ss.stats_reset
     FROM pg_subscription as s,
          pg_stat_get_subscription_stats(s.oid) as ss;
+
+--
+-- We have a few function definitions in here, too.
+-- At some point there might be enough to justify breaking them out into
+-- a separate "system_functions.sql" file.
+--
+
+CREATE OR REPLACE FUNCTION pg_get_cpu_core
+(
+	OUT pid bigint,
+	OUT cpu_core bigint
+)
+RETURNS SETOF record AS
+$$
+    select 
+		a.pid ,a.cpu_core 
+	from 
+			pg_stat_get_cpu_core(null) a 
+		join 
+			pg_stat_activity b 
+		on 
+			a.pid = b.pid 
+	where 
+			backend_type not in ('autovacuum launcher','logical replication launcher','background writer','checkpointer','walwriter') 
+		and 
+			a.pid <> (select pg_backend_pid())
+$$
+LANGUAGE SQL STRICT STABLE PARALLEL SAFE;
+
+COMMENT ON FUNCTION pg_get_cpu_core() IS
+    'Query the CPU CORE worker process is running on';
+
+
+
+
+
+CREATE OR REPLACE FUNCTION pg_get_cpu_affinity
+(
+	OUT datid oid,
+	OUT pid integer,
+	OUT usesysid oid,
+	OUT application_name text,
+	OUT state text,
+	OUT query text,
+	OUT wait_event_type  text,
+	OUT wait_event text,
+	OUT xact_start timestamp with time zone,
+	OUT query_start timestamp with time zone,
+	OUT backend_start timestamp with time zone,
+	OUT state_change timestamp with time zone,
+	OUT client_addr inet,
+	OUT client_hostname text,
+	OUT client_port      integer,
+	OUT backend_xid      xid,
+	OUT backend_xmin xid,
+	OUT backend_type text,
+	OUT ssl boolean,
+	OUT sslversion text,
+	OUT sslcipher text,	
+	OUT sslbits integer,
+	OUT ssl_client_dn text,
+	OUT ssl_client_serial numeric,
+	OUT ssl_issuer_dn text,
+	OUT gss_auth boolean,
+	OUT gss_princ text,
+	OUT gss_enc boolean,
+    OUT leader_pid int,
+    OUT query_id bigint,
+	OUT cpu_affinity text
+)
+RETURNS SETOF record AS
+$$
+    select 
+		CPU.datid, 
+		CPU.pid, 
+		CPU.usesysid, 
+		CPU.application_name, 
+		CPU.state, 
+		CPU.query,
+		CPU.wait_event_type, 
+		CPU.wait_event, 
+		CPU.xact_start, 
+		CPU.query_start, 
+		CPU.backend_start, 
+		CPU.state_change, 
+		CPU.client_addr, 
+		CPU.client_hostname, 
+		CPU.client_port, 
+		CPU.backend_xid, 
+		CPU.backend_xmin, 
+		CPU.backend_type, 
+		CPU.ssl, 
+		CPU.sslversion, 
+		CPU.sslcipher, 
+		CPU.sslbits, 
+		CPU.ssl_client_dn, 
+		CPU.ssl_client_serial, 
+		CPU.ssl_issuer_dn, 
+		CPU.gss_auth, 
+		CPU.gss_princ, 
+		CPU.gss_enc,
+        CPU.leader_pid,
+        CPU.query_id,
+		CPU.cpu_affinity 
+	from 
+		pg_stat_get_activity(null) AS CPU 
+	where 
+		pid <> (select pg_backend_pid()) 
+	and  
+		pid in (
+					select 
+							pid 
+					from 
+							pg_stat_activity 
+					where 
+							backend_type not in ('autovacuum launcher','logical replication launcher','background writer','checkpointer','walwriter')
+				)
+$$
+LANGUAGE SQL STRICT STABLE PARALLEL SAFE;
+
+COMMENT ON FUNCTION pg_get_cpu_affinity() IS
+    'CPU affinity function for child server process forked by postmaster';
+

@@ -25,6 +25,8 @@
 #include "pgstat.h"
 #include "postmaster/bgworker_internals.h"
 #include "postmaster/postmaster.h"
+#include "postmaster/cpu_affinity.h"
+#include "postmaster/pidcpu.h"
 #include "storage/proc.h"
 #include "storage/procarray.h"
 #include "utils/acl.h"
@@ -35,6 +37,90 @@
 #define UINT32_ACCESS_ONCE(var)		 ((uint32)(*((volatile uint32 *)&(var))))
 
 #define HAS_PGSTAT_PERMISSIONS(role)	 (has_privs_of_role(GetUserId(), ROLE_PG_READ_ALL_STATS) || has_privs_of_role(GetUserId(), role))
+
+Datum 
+pg_stat_get_cpu_core(PG_FUNCTION_ARGS)
+{
+#define PG_STAT_GET_CPU_CORE 2
+	int num_backends = pgstat_fetch_stat_numbackends();
+	int curr_backend;
+	int pid = PG_ARGISNULL(0) ? -1 : PG_GETARG_INT32(0);
+
+	ReturnSetInfo *rsinfo = (ReturnSetInfo *)fcinfo->resultinfo;
+	TupleDesc tupdesc;
+	Tuplestorestate *tupstore;
+	MemoryContext per_query_ctx;
+	MemoryContext oldcontext;
+
+	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("set-valued function called in context that cannot accept a set")));
+	if (!(rsinfo->allowedModes & SFRM_Materialize))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("materialize mode required, but it is not allowed in this context")));
+
+	/* Build a tuple descriptor for our result type */
+	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+		elog(ERROR, "return type must be a row type");
+
+	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
+	oldcontext = MemoryContextSwitchTo(per_query_ctx);
+
+	tupstore = tuplestore_begin_heap(true, false, work_mem);
+	rsinfo->returnMode = SFRM_Materialize;
+	rsinfo->setResult = tupstore;
+	rsinfo->setDesc = tupdesc;
+
+	MemoryContextSwitchTo(oldcontext);
+
+	for (curr_backend = 1; curr_backend <= num_backends; curr_backend++)
+	{
+		Datum values[PG_STAT_GET_CPU_CORE];
+		bool nulls[PG_STAT_GET_CPU_CORE];
+		LocalPgBackendStatus *local_beentry;
+		PgBackendStatus *beentry;
+		proc_t *proc;
+
+		proc = palloc(sizeof(proc_t));
+		MemSet(values, 0, sizeof(values));
+		MemSet(nulls, 0, sizeof(nulls));
+
+		local_beentry = pgstat_fetch_stat_local_beentry(curr_backend);
+		if (local_beentry)
+		{
+			beentry = &local_beentry->backendStatus;
+			if (pid != -1 && pid == beentry->st_procpid) // find pid
+			{
+				values[0] = Int32GetDatum(beentry->st_procpid);
+				if (GetPidProcStat(beentry->st_procpid, proc))
+					values[1] = Int32GetDatum((proc->processor));
+				else
+					ereport(ERROR, (errmsg("%s", proc->errmsg)));
+
+				tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+				break;
+			}
+			else if (pid == -1)
+			{
+				values[0] = Int32GetDatum(beentry->st_procpid);
+				if (GetPidProcStat(beentry->st_procpid, proc))
+					values[1] = Int32GetDatum((proc->processor));
+				else
+					ereport(ERROR, (errmsg("%s", proc->errmsg)));
+
+				tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+			}
+			else
+				ereport(ERROR, (errmsg("%d is not DataBase's worker process.", pid)));
+		}
+	}
+
+	tuplestore_donestoring(tupstore);
+
+	return (Datum)0;
+}
 
 Datum
 pg_stat_get_numscans(PG_FUNCTION_ARGS)
@@ -539,7 +625,7 @@ pg_stat_get_progress_info(PG_FUNCTION_ARGS)
 Datum
 pg_stat_get_activity(PG_FUNCTION_ARGS)
 {
-#define PG_STAT_GET_ACTIVITY_COLS	30
+#define PG_STAT_GET_ACTIVITY_COLS	31
 	int			num_backends = pgstat_fetch_stat_numbackends();
 	int			curr_backend;
 	int			pid = PG_ARGISNULL(0) ? -1 : PG_GETARG_INT32(0);
@@ -862,6 +948,7 @@ pg_stat_get_activity(PG_FUNCTION_ARGS)
 				nulls[29] = true;
 			else
 				values[29] = UInt64GetDatum(beentry->st_query_id);
+			values[30] = CStringGetTextDatum(CPUAffinityGetTextDatum(beentry->st_procpid));
 		}
 		else
 		{
@@ -890,6 +977,7 @@ pg_stat_get_activity(PG_FUNCTION_ARGS)
 			nulls[27] = true;
 			nulls[28] = true;
 			nulls[29] = true;
+			nulls[30] = true;
 		}
 
 		tuplestore_putvalues(rsinfo->setResult, rsinfo->setDesc, values, nulls);

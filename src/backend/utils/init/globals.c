@@ -121,6 +121,7 @@ int			DateOrder = DATEORDER_MDY;
 int			IntervalStyle = INTSTYLE_POSTGRES;
 
 bool		enableFsync = true;
+bool        enableCpuAffinity = false;
 bool		allowSystemTableMods = false;
 int			work_mem = 4096;
 double		hash_mem_multiplier = 2.0;

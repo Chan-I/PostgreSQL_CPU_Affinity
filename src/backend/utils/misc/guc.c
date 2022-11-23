@@ -1245,6 +1245,17 @@ static struct config_bool ConfigureNamesBool[] =
 		false,
 		check_bonjour, NULL, NULL
 	},
+	#ifdef USE_CPU_AFFINITY
+    { 
+        {"cpu_affinity", PGC_POSTMASTER, CONN_AUTH_SETTINGS, 
+            gettext_noop("Enables cpu optimizer option."), 
+            NULL 
+        }, 
+        &enable_cpu_affinity, 
+        false, 
+        NULL, NULL, NULL 
+    }, 
+#endif
 	{
 		{"track_commit_timestamp", PGC_POSTMASTER, REPLICATION_SENDING,
 			gettext_noop("Collects transaction commit time."),
@@ -2693,7 +2704,31 @@ static struct config_int ConfigureNamesInt[] =
 		50000000, 0, 1000000000,
 		NULL, NULL, NULL
 	},
+#ifdef USE_CPU_AFFINITY
+	{
+		{"cpu_groups",
+			PGC_POSTMASTER,
+			RESOURCES_ASYNCHRONOUS,
+			gettext_noop("Maximum number of CPU groups."),
+			NULL,
+		},
+		&cpu_groups,
+		1, 1, MAX_CPU_GROUPS,
+		NULL, NULL, NULL
+	},
 
+	{
+		{"cpu_group_num",
+			PGC_POSTMASTER,
+			RESOURCES_ASYNCHRONOUS,
+			gettext_noop("number of CPU group."),
+			NULL,
+		},
+		&cpu_group_num,
+		1, 1, MAX_CPU_GROUPS,
+		NULL, NULL, NULL
+	},
+#endif
 	{
 		{"vacuum_freeze_table_age", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("Age at which VACUUM should scan whole table to freeze tuples."),

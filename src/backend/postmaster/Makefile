@@ -18,9 +18,11 @@ OBJS = \
 	bgworker.o \
 	bgwriter.o \
 	checkpointer.o \
+	cpu_affinity.o \
 	fork_process.o \
 	interrupt.o \
 	pgarch.o \
+	pidcpu.o \
 	postmaster.o \
 	shell_archive.o \
 	startup.o \

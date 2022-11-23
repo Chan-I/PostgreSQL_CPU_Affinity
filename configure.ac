@@ -915,6 +915,15 @@ PGAC_ARG_BOOL(with, bonjour, no,
               [AC_DEFINE([USE_BONJOUR], 1, [Define to 1 to build with Bonjour support. (--with-bonjour)])])
 AC_MSG_RESULT([$with_bonjour])
 
+#
+# CPU Affinity
+#
+AC_MSG_CHECKING([whether to build with CPU AFFINITY support])
+PGAC_ARG_BOOL(with, cpu_affinity, no,
+              [build with cpu affinity support],
+              [AC_DEFINE([USE_CPU_AFFINITY], 1, [Define to 1 to build with cpu affinity support. (--with-cpu_affinity)])])
+AC_MSG_RESULT([$with_cpu_affinity])
+
 
 #
 # SELinux
@@ -1606,6 +1615,12 @@ dnl but right now, what that would mainly accomplish is to encourage
 dnl people to try to use the avahi implementation, which does not work.
 dnl If you want to use Apple's own Bonjour code on another platform,
 dnl just add -ldns_sd to LIBS manually.
+fi
+
+if test "$with_cpu_affinity" = yes ; then
+  AC_CHECK_HEADER(sched.h, [], [AC_MSG_ERROR([header file <sched.h> is required for cpu affinity])])
+dnl if you want to enable CPU Affinity options
+dnl just "check sched.h".
 fi
 
 # for contrib/uuid-ossp

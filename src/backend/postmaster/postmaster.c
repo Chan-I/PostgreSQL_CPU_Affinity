@@ -139,6 +139,26 @@
 #include "storage/spin.h"
 #endif
 
+#ifdef USE_CPU_AFFINITY
+#include <sched.h>
+#include <sys/resource.h>
+#include <sys/sysinfo.h>
+#include "postmaster/pidcpu.h"
+
+#define CPU_LOG_ERR(_s)               \
+	do                                \
+	{                                 \
+		ereport(ERROR, (errmsg(_s))); \
+	} while (0)
+#define CPU_RANGE_HEAD ((cpu_num / cpu_groups) * (cpu_group_num - 1))
+#define CPU_RANGE_TAIL ((cpu_num / cpu_groups) * (cpu_group_num))
+#define LSCPU_OPTS(_s)        \
+	do                        \
+	{                         \
+		lscpu_cxt_init(_s);   \
+		lscpu_read_numas(_s); \
+	} while (0)
+#endif
 
 /*
  * Possible types of a backend. Beyond being the possible bkend_type values in
@@ -217,6 +237,12 @@ char	   *ListenAddresses;
  * count against the limit.
  */
 int			ReservedBackends;
+
+#ifdef USE_CPU_AFFINITY
+int 		cpu_groups;
+int 		cpu_group_num;
+bool 		enable_cpu_affinity = false;
+#endif
 
 /* The socket(s) we're listening to. */
 #define MAXLISTEN	64
@@ -4158,6 +4184,26 @@ BackendStartup(Port *port)
 	Backend    *bn;				/* for backend cleanup */
 	pid_t		pid;
 
+#ifdef USE_CPU_AFFINITY
+	cpu_set_t set;
+	int cpu_num;
+	struct lscpu_cxt cxt;
+
+	if (cpu_groups > (cxt.maxcpus = cpu_num = get_nprocs_conf()))
+		CPU_LOG_ERR("cpu_groups is bigger than the number of cpu!");
+
+	if (cpu_group_num > cpu_groups || cpu_groups < 0 || cpu_group_num < 0)
+		CPU_LOG_ERR("cpu_groups or cpu_group_num is invalid.");
+
+	if (cpu_num % cpu_groups != 0)
+		CPU_LOG_ERR("the policy of the cpu affinity is not suitable for this env.");
+
+	LSCPU_OPTS(&cxt); /* Basic options for lscpu_cxt */
+					  /* read content from /sys/devices/system/node/node[n]/cpulist */
+
+	CPU_ZERO(&set);
+#endif
+
 	/*
 	 * Create backend data structure.  Better before the fork() so we can
 	 * handle failure cleanly.
@@ -4206,6 +4252,23 @@ BackendStartup(Port *port)
 	pid = backend_forkexec(port);
 #else							/* !EXEC_BACKEND */
 	pid = fork_process();
+	
+	/*
+	 *	Set cpu affinity by using cpu arr.
+	 */
+#ifdef USE_CPU_AFFINITY
+	if (enable_cpu_affinity)
+	{
+		for (int i = CPU_RANGE_HEAD; i < CPU_RANGE_TAIL; CPU_SET(cxt.cpuarr[i++], &set))
+			;
+
+		if (sched_setaffinity(getpid(), sizeof(set), &set) == -1)
+			CPU_LOG_ERR("sched_setaffinity failed");
+
+		lscpu_cxt_fini(&cxt); /* free apuarr in cxt */
+	}
+#endif
+
 	if (pid == 0)				/* child */
 	{
 		free(bn);

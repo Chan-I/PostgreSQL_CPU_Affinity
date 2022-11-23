@@ -863,6 +863,7 @@ with_pam
 with_bsd_auth
 with_ldap
 with_bonjour
+with_cpu_affinity
 with_selinux
 with_systemd
 with_readline
@@ -1572,6 +1573,7 @@ Optional Packages:
   --with-bsd-auth         build with BSD Authentication support
   --with-ldap             build with LDAP support
   --with-bonjour          build with Bonjour support
+  --with-cpu_affinity     build with cpu affinity support
   --with-selinux          build with SELinux support
   --with-systemd          build with systemd support
   --without-readline      do not use GNU Readline nor BSD Libedit for editing
@@ -8508,6 +8510,40 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_bonjour" >&5
 $as_echo "$with_bonjour" >&6; }
 
+#
+# CPU Affinity
+#
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to build with CPU AFFINITY support" >&5
+$as_echo_n "checking whether to build with CPU AFFINITY support... " >&6; }
+
+
+
+# Check whether --with-cpu_affinity was given.
+if test "${with_cpu_affinity+set}" = set; then :
+  withval=$with_cpu_affinity;
+  case $withval in
+    yes)
+
+$as_echo "#define USE_CPU_AFFINITY 1" >>confdefs.h
+
+      ;;
+    no)
+      :
+      ;;
+    *)
+      as_fn_error $? "no argument expected for --with-cpu_affinity option" "$LINENO" 5
+      ;;
+  esac
+
+else
+  with_cpu_affinity=no
+
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $with_cpu_affinity" >&5
+$as_echo "$with_cpu_affinity" >&6; }
+
 
 #
 # SELinux
@@ -14483,6 +14519,17 @@ if test "x$ac_cv_header_dns_sd_h" = xyes; then :
 
 else
   as_fn_error $? "header file <dns_sd.h> is required for Bonjour" "$LINENO" 5
+fi
+
+
+fi
+
+if test "$with_cpu_affinity" = yes ; then
+  ac_fn_c_check_header_mongrel "$LINENO" "sched.h" "ac_cv_header_sched_h" "$ac_includes_default"
+if test "x$ac_cv_header_sched_h" = xyes; then :
+
+else
+  as_fn_error $? "header file <sched.h> is required for cpu affinity" "$LINENO" 5
 fi
 
 

@@ -31,6 +31,12 @@ extern PGDLLIMPORT char *bonjour_name;
 extern PGDLLIMPORT bool restart_after_crash;
 extern PGDLLIMPORT bool remove_temp_files_after_crash;
 
+#ifdef USE_CPU_AFFINITY
+extern int cpu_groups;
+extern int cpu_group_num;
+extern bool enable_cpu_affinity;
+#endif
+
 #ifdef WIN32
 extern PGDLLIMPORT HANDLE PostmasterHandle;
 #else
@@ -74,5 +80,9 @@ extern void ShmemBackendArrayAllocation(void);
  * relevant GUC check hooks and in RegisterBackgroundWorker().
  */
 #define MAX_BACKENDS	0x3FFFF
+
+#ifdef USE_CPU_AFFINITY
+#define MAX_CPU_GROUPS 9999
+#endif
 
 #endif							/* _POSTMASTER_H */
