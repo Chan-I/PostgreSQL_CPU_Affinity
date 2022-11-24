@@ -14,10 +14,11 @@ GUC参数：
 
 其他：需要注意的是，cpu_groups的分组数，一般要小于等于分布式节点的个数。否则会导致一部分的CPU核心无法参与运算。
 
-**对应函数**：
-需要注意的是，并不是每一个PostgreSQL master进程fork出的child process 都要给予显示，这里排除了一些常驻后台进程。
+### 0.**对应函数**：
 
-### 1.```pg_get_cpu_affinity();``` [显示数据库进程运行在那个CPU socket分组上]  （cpu_affinity列为当前pid的亲和度设置情况）
+**ATTENTION**:需要注意的是，并不是每一个PostgreSQL master进程fork出的child process 都要给予显示，这里排除了一些常驻后台进程,而且不包括当前psql连接所对应的server child process，如果想看到效果，至少开两个psql客户端连接数据库，然后在其中一个psql执行，即可看到另一个psql对应的后台进程的信息。
+
+#### 1.```pg_get_cpu_affinity();``` [显示数据库进程运行在那个CPU socket分组上]  （cpu_affinity列为当前pid的亲和度设置情况）
 
 ```sql
 postgres=# select * from  pg_get_cpu_affinity();
@@ -29,7 +30,7 @@ postgres=# select * from  pg_get_cpu_affinity();
 
 ```
 
-### 2.```pg_get_cpu_core()``` [显示数据库服务进程此刻正在哪个CPU核心上运行，**默认屏蔽一些后台常驻服务，仅显示后派生的服务进程。**]   (返回当前数据库所有后台server进程此刻正在运行在CPU哪个核心中，**此函数需要被GUI前端反复调用，用作刷新显示**)
+#### 2.```pg_get_cpu_core()``` [显示数据库服务进程此刻正在哪个CPU核心上运行，**默认屏蔽一些后台常驻服务，仅显示后派生的服务进程。**]   (返回当前数据库所有后台server进程此刻正在运行在CPU哪个核心中，**此函数需要被GUI前端反复调用，用作刷新显示**)
 
 ```sql
 postgres=# select * from pg_get_cpu_core();
@@ -42,7 +43,7 @@ postgres=# select * from pg_get_cpu_core();
 
 ```
 
-### 3.显示guc参数
+#### 3.显示guc参数
 
 ```sql
 postgres=# show cpu_affinity ;
