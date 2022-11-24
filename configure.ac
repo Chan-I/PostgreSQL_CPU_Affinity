@@ -920,8 +920,8 @@ AC_MSG_RESULT([$with_bonjour])
 #
 AC_MSG_CHECKING([whether to build with CPU AFFINITY support])
 PGAC_ARG_BOOL(with, cpu_affinity, no,
-              [build with cpu affinity support],
-              [AC_DEFINE([USE_CPU_AFFINITY], 1, [Define to 1 to build with cpu affinity support. (--with-cpu_affinity)])])
+              [build with CPU affinity support],
+              [AC_DEFINE([USE_CPU_AFFINITY], 1, [Define to 1 to build with CPU affinity support. (--with-cpu_affinity)])])
 AC_MSG_RESULT([$with_cpu_affinity])
 
 

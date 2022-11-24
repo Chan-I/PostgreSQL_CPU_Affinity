@@ -15,6 +15,7 @@ GUC参数：
 其他：需要注意的是，cpu_groups的分组数，一般要小于等于分布式节点的个数。否则会导致一部分的CPU核心无法参与运算。
 
 **对应函数**：
+需要注意的是，并不是每一个PostgreSQL master进程fork出的child process 都要给予显示，这里排除了一些常驻后台进程。
 
 ### 1.```pg_get_cpu_affinity();``` [显示数据库进程运行在那个CPU socket分组上]  （cpu_affinity列为当前pid的亲和度设置情况）
 

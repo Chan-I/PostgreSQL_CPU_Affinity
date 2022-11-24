@@ -1573,7 +1573,7 @@ Optional Packages:
   --with-bsd-auth         build with BSD Authentication support
   --with-ldap             build with LDAP support
   --with-bonjour          build with Bonjour support
-  --with-cpu_affinity     build with cpu affinity support
+  --with-cpu_affinity     build with CPU affinity support
   --with-selinux          build with SELinux support
   --with-systemd          build with systemd support
   --without-readline      do not use GNU Readline nor BSD Libedit for editing
